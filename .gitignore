@@ -1,0 +1,18 @@
+# Java build files
+/target/
+*.class
+
+# IDE specific files
+/.idea/
+/.vscode/
+*.iml
+
+# OS specific files
+.DS_Store
+
+# Logs
+*.log
+
+# Sensitive files
+application.properties
+application.yml
