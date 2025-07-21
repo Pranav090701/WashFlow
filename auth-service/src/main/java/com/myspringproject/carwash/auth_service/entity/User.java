@@ -29,6 +29,8 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    private boolean isVerified; 
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -44,11 +46,9 @@ public class User {
 
     @Override
     public String toString() {
-        return "User [id=" + id + ", email=" + email + ", password=" + password + ", role=" + role + ", createdAt="
-                + createdAt + ", updatedAt=" + updatedAt + "]";
+        return "User [id=" + id + ", email=" + email + ", password=" + password + ", role=" + role + ", isVerified="
+                + isVerified + ", createdAt=" + createdAt + ", updatedAt=" + updatedAt + "]";
     }
-
-    
 
 }
 

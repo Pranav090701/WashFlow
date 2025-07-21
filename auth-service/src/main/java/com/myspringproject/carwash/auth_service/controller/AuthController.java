@@ -35,4 +35,14 @@ public class AuthController {
         String token = authHeader.replace("Bearer ", "");
         return authService.logout(token);
     }
+
+    @GetMapping("/verify")
+    public ResponseEntity<String> verifyToken(@RequestParam String token) {
+        boolean isValid = authService.verifyToken(token);
+        if(isValid){
+            return ResponseEntity.ok("Verified successfully!");
+        } else {
+            return ResponseEntity.badRequest().body("Invalid or expired token.");
+        }
+    }
 }

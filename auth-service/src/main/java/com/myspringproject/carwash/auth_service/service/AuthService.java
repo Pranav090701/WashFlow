@@ -1,18 +1,23 @@
 package com.myspringproject.carwash.auth_service.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 
+import com.myspringproject.carwash.auth_service.repository.TokenRepository;
 import com.myspringproject.carwash.auth_service.repository.UserRepository;
 import com.myspringproject.carwash.auth_service.util.JwtUtil;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.myspringproject.carwash.auth_service.entity.Role;
 import com.myspringproject.carwash.auth_service.entity.User;
+import com.myspringproject.carwash.auth_service.entity.VerificationToken;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -31,6 +36,9 @@ public class AuthService {
 
     @Autowired
     private RedisService redisService;
+
+    @Autowired
+    private TokenRepository tokenRepository;
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
 
@@ -85,5 +93,26 @@ public class AuthService {
         String userId = jwtUtil.extractUserId(token);
         redisService.deleteSession(userId);
         return ResponseEntity.ok("Logged out");
+    }
+
+    public boolean verifyToken(@RequestParam String token) {
+        Optional<VerificationToken> optionalToken = tokenRepository.findByToken(token);
+        VerificationToken verificationToken = null;
+        if(optionalToken.isPresent()){
+            verificationToken = optionalToken.get();
+        }
+
+        if (verificationToken == null || verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+
+        User user = verificationToken.getUser();
+        user.setVerified(true);
+        userRepository.save(user);
+
+        logger.info("Verified user {} with Id {}",user.getEmail(),user.getId());
+
+        tokenRepository.delete(verificationToken); 
+        return true;
     }
 }
