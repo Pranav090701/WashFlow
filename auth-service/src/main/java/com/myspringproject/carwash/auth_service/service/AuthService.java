@@ -22,6 +22,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -75,7 +76,23 @@ public class AuthService {
         user.setRole(Role.valueOf(role));
 
         userRepository.save(user);
-        logger.info("Completed User Registration for email {} role {}", email, role);
+
+        // Create verification token
+        VerificationToken tokenEntity = new VerificationToken();
+        tokenEntity.setToken(UUID.randomUUID().toString()); // Random token
+        tokenEntity.setUser(user);
+        tokenEntity.setExpiryDate(LocalDateTime.now().plusHours(24)); // Token valid for 24h
+
+        tokenRepository.save(tokenEntity);
+
+        logger.info("Completed User Registration for email {} role {}. Verification token created.", email, role);
+        logger.info("Verification token: {}", tokenEntity.getToken());
+
+        // TODO: Publish event to Notification service to send verification email
+        // Example:
+        // notificationService.sendVerificationEmail(user.getEmail(),
+        // tokenEntity.getToken());
+
         return user;
     }
 
