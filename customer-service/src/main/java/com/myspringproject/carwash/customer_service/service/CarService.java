@@ -39,6 +39,7 @@ public class CarService {
      * @return The saved Car entity
      */
     public Car addCar(CarDTO inputCar, UUID userId) {
+        logger.info("Entered addCar for {}", userId);
         Car car = new Car();
         car.setUserId(userId);
         car.setBrand(inputCar.getBrand());
@@ -89,6 +90,7 @@ public class CarService {
      * @param userId UUID of the user requesting deletion
      */
     public void deleteCarById(UUID carId, UUID userId) {
+        logger.info("Entered deleteCarById for carId: {} and userId: {}", carId, userId);
         Car existingCar = carRepository.findById(carId)
                 .orElseThrow(() -> new CarNotFoundException("Car with id" + carId + " not found"));
         carRepository.delete(existingCar);
@@ -112,6 +114,7 @@ public class CarService {
      * @return The updated Car entity
      */
     public Car updateCar(CarDTO car, UUID userId, UUID carId) {
+        logger.info("Entered updateCar for carId: {} and userId: {}", carId, userId);
         Car existingCar = carRepository.findById(carId)
                 .orElseThrow(() -> new CarNotFoundException("Car with id" + carId + " not found"));
 
