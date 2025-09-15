@@ -28,6 +28,19 @@ public class Car {
     @Column(name = "plate_number", unique = true)
     private String plateNumber;
 
+    public Car() {
+    }
+
+    public Car(UUID id, UUID userId, String brand, String model, String color, int year, String plateNumber) {
+        this.id = id;
+        this.userId = userId;
+        this.brand = brand;
+        this.model = model;
+        this.color = color;
+        this.year = year;
+        this.plateNumber = plateNumber;
+    }
+
     public UUID getId() {
         return id;
     }

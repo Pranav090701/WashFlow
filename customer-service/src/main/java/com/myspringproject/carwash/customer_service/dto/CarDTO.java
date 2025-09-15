@@ -1,12 +1,20 @@
 package com.myspringproject.carwash.customer_service.dto;
 
 public class CarDTO {
-    
+
     private String brand;
     private String model;
     private String color;
     private int year;
     private String plateNumber;
+
+    public CarDTO(String brand, String model, String color, int year, String plateNumber) {
+        this.brand = brand;
+        this.model = model;
+        this.color = color;
+        this.year = year;
+        this.plateNumber = plateNumber;
+    }
 
     public String getBrand() {
         return brand;
@@ -47,7 +55,5 @@ public class CarDTO {
     public void setPlateNumber(String plateNumber) {
         this.plateNumber = plateNumber;
     }
-
-    
 
 }
