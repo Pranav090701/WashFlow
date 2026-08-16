@@ -2,6 +2,7 @@ package com.myspringproject.carwash.washer_service.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -23,12 +24,15 @@ public class RatingService {
     private final RatingRepository ratingRepository;
     private final WasherProfileService washerService;
     private final BookingClient bookingClient;
+    private final String bookingValidationToken;
 
     public RatingService(RatingRepository ratingRepository, WasherProfileService washerService,
-            BookingClient bookingClient) {
+            BookingClient bookingClient,
+            @Value("${carwash.internal.booking-validation-token}") String bookingValidationToken) {
         this.ratingRepository = ratingRepository;
         this.washerService = washerService;
         this.bookingClient = bookingClient;
+        this.bookingValidationToken = bookingValidationToken;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(RatingService.class);
@@ -86,7 +90,7 @@ public class RatingService {
             throw new IllegalArgumentException("Booking ID is required");
         }
 
-        Boolean isValid = bookingClient.validateBooking(bookingId, customerId);
+        Boolean isValid = bookingClient.validateBooking(bookingId, customerId, bookingValidationToken);
         if (!Boolean.TRUE.equals(isValid)) {
             throw new IllegalArgumentException("Invalid booking for customer");
         }

@@ -21,6 +21,8 @@ public interface SlotRepository extends JpaRepository<Slot, UUID> {
 
     List<Slot> findByDate(LocalDate date);
 
+    List<Slot> findByWasherId(UUID washerId);
+
     Slot findByWasherIdAndDateAndStartTime(UUID washerId, LocalDate date, LocalTime startTime);
 }
 

@@ -2,10 +2,12 @@ package com.myspringproject.carwash.booking_service.service;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.myspringproject.carwash.booking_service.cache.SlotCacheService;
 import com.myspringproject.carwash.booking_service.dto.BookingRequestDto;
+import com.myspringproject.carwash.booking_service.dto.LockedSlotQuoteResponse;
 import com.myspringproject.carwash.booking_service.dto.SlotRequest;
 import com.myspringproject.carwash.booking_service.entity.Booking;
 import com.myspringproject.carwash.booking_service.entity.Booking.BookingStatus;
@@ -19,6 +21,7 @@ import com.myspringproject.carwash.booking_service.repository.SlotRepository;
 
 import jakarta.transaction.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -34,6 +37,8 @@ public class SlotService {
     private SlotCacheService slotCacheService;
 
     private BookingRepository bookingRepository;
+    private final BigDecimal standardWashAmount;
+    private final String pricingCurrency;
 
     /**
      * Constructor for SlotService
@@ -43,10 +48,14 @@ public class SlotService {
      * @param bookingRepository Repository for Booking entity
      */
     public SlotService(SlotRepository slotRepository, SlotCacheService slotCacheService,
-            BookingRepository bookingRepository) {
+            BookingRepository bookingRepository,
+            @Value("${carwash.pricing.standard-wash-amount}") BigDecimal standardWashAmount,
+            @Value("${carwash.pricing.currency:INR}") String pricingCurrency) {
         this.slotRepository = slotRepository;
         this.slotCacheService = slotCacheService;
         this.bookingRepository = bookingRepository;
+        this.standardWashAmount = standardWashAmount;
+        this.pricingCurrency = pricingCurrency;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(SlotService.class);
@@ -78,6 +87,29 @@ public class SlotService {
     }
 
     /**
+     * Validate that a slot is currently locked by this customer and return the
+     * server-owned payable amount.
+     */
+    public LockedSlotQuoteResponse getLockedSlotQuote(BookingRequestDto bookingDTO, UUID customerId) {
+        Slot slot = getSlot(bookingDTO.getWasherId(), bookingDTO.getDate(), bookingDTO.getSlotTime());
+
+        bookingRepository.findBySlotIdAndUserId(slot.getId(), customerId)
+                .ifPresent(existing -> {
+                    throw new SlotNotFoundException("Slot is already booked.");
+                });
+        ensureSlotIsNotBooked(slot);
+
+        validateLockOwner(bookingDTO.getWasherId(), bookingDTO.getDate(), bookingDTO.getSlotTime(), customerId);
+
+        return new LockedSlotQuoteResponse(
+                bookingDTO.getWasherId(),
+                bookingDTO.getDate(),
+                bookingDTO.getSlotTime(),
+                standardWashAmount,
+                pricingCurrency);
+    }
+
+    /**
      * Book a slot after locking and availability checks
      */
     @Transactional
@@ -86,26 +118,22 @@ public class SlotService {
         UUID washerId = bookingDTO.getWasherId();
         LocalDate date = bookingDTO.getDate();
 
-        UUID lockOwner = slotCacheService.getLockOwner(washerId.toString(), date.toString(), time);
-        if (lockOwner == null) {
-            throw new SlotLockExpiredException("Slot lock expired or not found.");
-        }
-        if (!lockOwner.equals(customerId)) {
-            throw new UnauthorizedAccessException("This slot is locked by another customer.");
-        }
+        Slot slot = getSlot(washerId, date, bookingDTO.getSlotTime());
 
-        Slot slot = slotRepository.findByWasherIdAndDateAndStartTime(washerId, date, LocalTime.parse(time));
-        if (slot == null) {
-            throw new SlotNotFoundException(
-                    "Slot not found in DB for washerId: " + washerId + ", date: " + date + ", time: " + time);
+        var existingBooking = bookingRepository.findBySlotIdAndUserId(slot.getId(), customerId);
+        if (existingBooking.isPresent()) {
+            return existingBooking.get();
         }
+        ensureSlotIsNotBooked(slot);
+
+        validateLockOwner(washerId, date, bookingDTO.getSlotTime(), customerId);
 
         // 3. Save booking details in Booking table
         Booking booking = new Booking(
                 slot.getId(),
                 customerId,
                 BookingStatus.CONFIRMED,
-                bookingDTO.getPrice(),
+                standardWashAmount.doubleValue(),
                 LocalDateTime.now(),
                 LocalDateTime.now(),
                 LocalDateTime.now());
@@ -127,6 +155,34 @@ public class SlotService {
 
         logger.info("Slot booked successfully for washerId: {}, date: {}, time: {}", washerId, date, time);
         return booking;
+    }
+
+    private Slot getSlot(UUID washerId, LocalDate date, LocalTime slotTime) {
+        Slot slot = slotRepository.findByWasherIdAndDateAndStartTime(washerId, date, slotTime);
+        if (slot == null) {
+            throw new SlotNotFoundException(
+                    "Slot not found in DB for washerId: " + washerId + ", date: " + date + ", time: " + slotTime);
+        }
+        return slot;
+    }
+
+    private void ensureSlotIsNotBooked(Slot slot) {
+        if (slot.getStatus() == SlotStatus.BOOKED) {
+            throw new SlotNotFoundException("Slot is already booked.");
+        }
+    }
+
+    private void validateLockOwner(UUID washerId, LocalDate date, LocalTime slotTime, UUID customerId) {
+        UUID lockOwner = slotCacheService.getLockOwner(
+                washerId.toString(),
+                date.toString(),
+                slotTime.toString());
+        if (lockOwner == null) {
+            throw new SlotLockExpiredException("Slot lock expired or not found.");
+        }
+        if (!lockOwner.equals(customerId)) {
+            throw new UnauthorizedAccessException("This slot is locked by another customer.");
+        }
     }
 
     /**

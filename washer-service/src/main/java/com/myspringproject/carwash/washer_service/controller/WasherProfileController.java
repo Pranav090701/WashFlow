@@ -3,6 +3,7 @@ package com.myspringproject.carwash.washer_service.controller;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.myspringproject.carwash.washer_service.dto.WasherProfileDTO;
 import com.myspringproject.carwash.washer_service.entity.WasherProfile;
@@ -54,8 +56,15 @@ public class WasherProfileController {
 
     @PreAuthorize("hasAnyRole('WASHER', 'ADMIN')")
     @PatchMapping("/availability")
-    public String updateAvailabilityStatus(@RequestHeader("X-Washer-Id") UUID userId, boolean availablity) {
-        return profileService.updateAvailabilityStatus(userId, availablity);
+    public String updateAvailabilityStatus(@RequestHeader("X-Washer-Id") UUID userId,
+                                           @RequestParam(value = "availability", required = false) Boolean availability,
+                                           @RequestParam(value = "availablity", required = false) Boolean legacyAvailability) {
+        Boolean requestedAvailability = availability != null ? availability : legacyAvailability;
+        if (requestedAvailability == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "availability query parameter is required");
+        }
+
+        return profileService.updateAvailabilityStatus(userId, requestedAvailability);
     }
 
     // Fetch all washers in a given area and pincode

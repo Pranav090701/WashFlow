@@ -29,6 +29,5 @@ public class BookingRequestDto {
     @NotNull(message = "Date is required (yyyy-MM-dd format)")
     private LocalDate date;
 
-    @NotNull(message = "Price is required")
     private Double price;
 }

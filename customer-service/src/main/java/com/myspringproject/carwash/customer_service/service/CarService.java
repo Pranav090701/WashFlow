@@ -93,11 +93,12 @@ public class CarService {
         logger.info("Entered deleteCarById for carId: {} and userId: {}", carId, userId);
         Car existingCar = carRepository.findById(carId)
                 .orElseThrow(() -> new CarNotFoundException("Car with id" + carId + " not found"));
-        carRepository.delete(existingCar);
 
         if(!existingCar.getUserId().equals(userId)){
             throw new CarOwnershipMismatchException(existingCar.getId(),userId);
         }
+
+        carRepository.delete(existingCar);
 
         // Invalidate user's car list cache
         redisTemplate.delete(CARS_CACHE_PREFIX + existingCar.getUserId());

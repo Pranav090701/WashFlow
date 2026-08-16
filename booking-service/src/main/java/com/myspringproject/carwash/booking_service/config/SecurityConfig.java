@@ -34,8 +34,11 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**",
                     "/slots/available",
+                    "/slots/locked-quote",
+                    "/slots/confirm",
                     "/bookings/*/validate"
                 ).permitAll()
+                .requestMatchers("/admin/bookings/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
