@@ -29,6 +29,8 @@ public class Payment {
     @Column(nullable = false)
     private UUID customerId;
 
+    private String customerEmail;
+
     @Column(nullable = false)
     private UUID washerId;
 
@@ -84,6 +86,14 @@ public class Payment {
 
     public void setCustomerId(UUID customerId) {
         this.customerId = customerId;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
     }
 
     public UUID getWasherId() {

@@ -27,6 +27,7 @@ import com.myspringproject.carwash.payment_service.dto.PaymentResponse;
 import com.myspringproject.carwash.payment_service.dto.VerifyPaymentRequest;
 import com.myspringproject.carwash.payment_service.entity.Payment;
 import com.myspringproject.carwash.payment_service.entity.Payment.PaymentStatus;
+import com.myspringproject.carwash.payment_service.event.PaymentEventPublisher;
 import com.myspringproject.carwash.payment_service.exception.BookingConfirmationException;
 import com.myspringproject.carwash.payment_service.exception.PaymentAccessDeniedException;
 import com.myspringproject.carwash.payment_service.exception.PaymentNotFoundException;
@@ -44,6 +45,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final RazorpayClient razorpayClient;
     private final BookingClientService bookingClientService;
+    private final PaymentEventPublisher paymentEventPublisher;
     private final String razorpayKeyId;
     private final String razorpayKeySecret;
     private final String razorpayWebhookSecret;
@@ -57,12 +59,14 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             RazorpayClient razorpayClient,
             BookingClientService bookingClientService,
+            PaymentEventPublisher paymentEventPublisher,
             @Value("${razorpay.key-id}") String razorpayKeyId,
             @Value("${razorpay.key-secret}") String razorpayKeySecret,
             @Value("${razorpay.webhook-secret}") String razorpayWebhookSecret) {
         this.paymentRepository = paymentRepository;
         this.razorpayClient = razorpayClient;
         this.bookingClientService = bookingClientService;
+        this.paymentEventPublisher = paymentEventPublisher;
         this.razorpayKeyId = razorpayKeyId;
         this.razorpayKeySecret = razorpayKeySecret;
         this.razorpayWebhookSecret = razorpayWebhookSecret;
@@ -112,7 +116,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentInitiationResponse initiatePayment(UUID customerId, InitiatePaymentRequest request) {
+    public PaymentInitiationResponse initiatePayment(UUID customerId, String customerEmail, InitiatePaymentRequest request) {
         var activePayment = paymentRepository
                 .findFirstByCustomerIdAndWasherIdAndDateAndSlotTimeAndStatusInOrderByCreatedAtDesc(
                         customerId,
@@ -121,7 +125,13 @@ public class PaymentService {
                         request.getSlotTime(),
                         ACTIVE_PAYMENT_STATUSES);
         if (activePayment.isPresent()) {
-            return toInitiationResponse(activePayment.get());
+            Payment payment = activePayment.get();
+            if ((payment.getCustomerEmail() == null || payment.getCustomerEmail().isBlank())
+                    && customerEmail != null && !customerEmail.isBlank()) {
+                payment.setCustomerEmail(customerEmail);
+                paymentRepository.save(payment);
+            }
+            return toInitiationResponse(payment);
         }
 
         LockedSlotQuoteResponse quote = bookingClientService.getLockedSlotQuote(customerId, request);
@@ -150,6 +160,7 @@ public class PaymentService {
 
         Payment payment = new Payment();
         payment.setCustomerId(customerId);
+        payment.setCustomerEmail(customerEmail);
         payment.setWasherId(request.getWasherId());
         payment.setDate(request.getDate());
         payment.setSlotTime(request.getSlotTime());
@@ -183,7 +194,9 @@ public class PaymentService {
         if (!isSignatureValid(request)) {
             payment.setStatus(PaymentStatus.FAILED);
             payment.setFailureReason("Razorpay signature verification failed");
-            return toResponse(paymentRepository.save(payment));
+            Payment failedPayment = paymentRepository.save(payment);
+            paymentEventPublisher.publishPaymentFailed(failedPayment);
+            return toResponse(failedPayment);
         }
 
         payment.setRazorpayPaymentId(request.getRazorpayPaymentId());
@@ -193,7 +206,9 @@ public class PaymentService {
             payment.setBookingId(bookingId);
             payment.setStatus(PaymentStatus.SUCCESS);
             payment.setFailureReason(null);
-            return toResponse(paymentRepository.save(payment));
+            Payment savedPayment = paymentRepository.save(payment);
+            paymentEventPublisher.publishPaymentSuccess(savedPayment);
+            return toResponse(savedPayment);
         } catch (RuntimeException e) {
             payment.setStatus(PaymentStatus.BOOKING_CONFIRM_FAILED);
             payment.setFailureReason(e.getMessage());
@@ -333,7 +348,8 @@ public class PaymentService {
             payment.setBookingId(bookingId);
             payment.setStatus(PaymentStatus.SUCCESS);
             payment.setFailureReason(null);
-            paymentRepository.save(payment);
+            Payment savedPayment = paymentRepository.save(payment);
+            paymentEventPublisher.publishPaymentSuccess(savedPayment);
         } catch (RuntimeException e) {
             payment.setStatus(PaymentStatus.BOOKING_CONFIRM_FAILED);
             payment.setFailureReason(e.getMessage());
@@ -353,7 +369,8 @@ public class PaymentService {
         setRazorpayPaymentIdIfPresent(payment, razorpayPaymentId);
         payment.setStatus(PaymentStatus.FAILED);
         payment.setFailureReason(paymentEntity.optString("error_description", "Razorpay payment failed"));
-        paymentRepository.save(payment);
+        Payment savedPayment = paymentRepository.save(payment);
+        paymentEventPublisher.publishPaymentFailed(savedPayment);
     }
 
     private void ensureWebhookAmountMatches(Payment payment, JSONObject paymentEntity) {

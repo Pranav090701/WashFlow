@@ -39,7 +39,8 @@ public class PaymentController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody InitiatePaymentRequest request) {
         UUID customerId = UUID.fromString(jwt.getSubject());
-        PaymentInitiationResponse response = paymentService.initiatePayment(customerId, request);
+        String customerEmail = jwt.getClaimAsString("email");
+        PaymentInitiationResponse response = paymentService.initiatePayment(customerId, customerEmail, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

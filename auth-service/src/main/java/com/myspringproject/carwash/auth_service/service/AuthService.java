@@ -1,26 +1,25 @@
 package com.myspringproject.carwash.auth_service.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
-import com.myspringproject.carwash.auth_service.repository.TokenRepository;
 import com.myspringproject.carwash.auth_service.repository.UserRepository;
 import com.myspringproject.carwash.auth_service.util.JwtUtil;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.myspringproject.carwash.auth_service.event.VerificationEmailEventPublisher;
 import com.myspringproject.carwash.auth_service.entity.Role;
 import com.myspringproject.carwash.auth_service.entity.User;
-import com.myspringproject.carwash.auth_service.entity.VerificationToken;
 import com.myspringproject.carwash.auth_service.exception.InvalidRoleException;
 import com.myspringproject.carwash.auth_service.exception.DuplicateEmailException;
+import com.myspringproject.carwash.auth_service.exception.EmailNotVerifiedException;
 import com.myspringproject.carwash.auth_service.exception.InvalidCredentialsException;
 import com.myspringproject.carwash.auth_service.exception.TokenExpiredException;
 import com.myspringproject.carwash.auth_service.exception.TokenInvalidException;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,19 +30,25 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RedisService redisService;
-    private final TokenRepository tokenRepository;
+    private final EmailVerificationTokenService emailVerificationTokenService;
+    private final VerificationEmailEventPublisher verificationEmailEventPublisher;
+    private final boolean emailVerificationRequired;
 
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
             JwtUtil jwtUtil,
             RedisService redisService,
-            TokenRepository tokenRepository) {
+            EmailVerificationTokenService emailVerificationTokenService,
+            VerificationEmailEventPublisher verificationEmailEventPublisher,
+            @Value("${auth.email-verification.required:false}") boolean emailVerificationRequired) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.redisService = redisService;
-        this.tokenRepository = tokenRepository;
+        this.emailVerificationTokenService = emailVerificationTokenService;
+        this.verificationEmailEventPublisher = verificationEmailEventPublisher;
+        this.emailVerificationRequired = emailVerificationRequired;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
@@ -75,25 +80,14 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(password));
         user.setRole(Role.valueOf(role));
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
 
-        // Create verification token
-        VerificationToken tokenEntity = new VerificationToken();
-        tokenEntity.setToken(UUID.randomUUID().toString()); // Random token
-        tokenEntity.setUser(user);
-        tokenEntity.setExpiryDate(LocalDateTime.now().plusHours(24)); // Token valid for 24h
+        EmailVerificationTokenService.VerificationLink verificationLink =
+                emailVerificationTokenService.createVerificationLink(savedUser.getId());
+        verificationEmailEventPublisher.publish(savedUser, verificationLink.link(), verificationLink.expiresInHours());
 
-        tokenRepository.save(tokenEntity);
-
-        logger.info("Completed User Registration for email {} role {}. Verification token created.", email, role);
-        logger.info("Verification token: {}", tokenEntity.getToken());
-
-        // TODO: Publish event to Notification service to send verification email
-        // Example:
-        // notificationService.sendVerificationEmail(user.getEmail(),
-        // tokenEntity.getToken());
-
-        return user;
+        logger.info("Completed User Registration for email {} role {}. Verification email event created.", email, role);
+        return savedUser;
     }
 
     /**
@@ -113,6 +107,9 @@ public class AuthService {
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
+        }
+        if (emailVerificationRequired && !user.isVerified()) {
+            throw new EmailNotVerifiedException("Email verification is required before login");
         }
 
         logger.info("User found {}", user);
@@ -177,27 +174,31 @@ public class AuthService {
      * @throws TokenInvalidException if the token is invalid
      * @throws TokenExpiredException if the token has expired
      */
-    public void verifyToken(@RequestParam String token) {
-        Optional<VerificationToken> optionalToken = tokenRepository.findByToken(token);
-
-        if (optionalToken.isEmpty()) {
-            logger.warn("Invalid verification token: {}", token);
-            throw new TokenInvalidException("Verification token is invalid");
-        }
-
-        VerificationToken verificationToken = optionalToken.get();
-
-        if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            logger.warn("Expired verification token for user: {}", verificationToken.getUser().getEmail());
-            throw new TokenExpiredException("Verification token has expired");
-        }
-
-        User user = verificationToken.getUser();
+    public void verifyToken(String token) {
+        UUID userId = emailVerificationTokenService.consumeToken(token);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new TokenInvalidException("Verification token does not belong to a valid user"));
         user.setVerified(true);
         userRepository.save(user);
-
         logger.info("Verified user {} with Id {}", user.getEmail(), user.getId());
+    }
 
-        tokenRepository.delete(verificationToken);
+    public void resendVerification(String email) {
+        Optional<User> userOpt = userRepository.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            logger.info("Ignoring verification resend for unknown email {}", email);
+            return;
+        }
+
+        User user = userOpt.get();
+        if (user.isVerified()) {
+            logger.info("Ignoring verification resend because user {} is already verified", user.getId());
+            return;
+        }
+
+        EmailVerificationTokenService.VerificationLink verificationLink =
+                emailVerificationTokenService.createVerificationLink(user.getId());
+        verificationEmailEventPublisher.publish(user, verificationLink.link(), verificationLink.expiresInHours());
+        logger.info("Queued verification resend for user {}", user.getId());
     }
 }

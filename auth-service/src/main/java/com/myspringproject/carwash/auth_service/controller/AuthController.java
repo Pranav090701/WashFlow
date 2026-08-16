@@ -2,6 +2,7 @@ package com.myspringproject.carwash.auth_service.controller;
 
 import com.myspringproject.carwash.auth_service.dto.LoginRequest;
 import com.myspringproject.carwash.auth_service.dto.RegisterRequest;
+import com.myspringproject.carwash.auth_service.dto.ResendVerificationRequest;
 import com.myspringproject.carwash.auth_service.entity.User;
 import com.myspringproject.carwash.auth_service.service.AuthService;
 
@@ -99,5 +100,13 @@ public class AuthController {
     public ResponseEntity<String> verifyToken(@RequestParam String token) {
         authService.verifyToken(token);
         return ResponseEntity.ok("Verified successfully!");
+    }
+
+    @Operation(summary = "Resend email verification", description = "Creates a new email verification token and queues a verification email.")
+    @ApiResponse(responseCode = "200", description = "Verification email queued when the account exists and is not already verified")
+    @PostMapping("/resend-verification")
+    public ResponseEntity<String> resendVerification(@RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.getEmail());
+        return ResponseEntity.ok("If the account exists and is unverified, a verification email will be sent.");
     }
 }

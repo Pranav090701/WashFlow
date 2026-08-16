@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.myspringproject.carwash.payment_service.dto.BookingRequestDto;
@@ -11,6 +12,7 @@ import com.myspringproject.carwash.payment_service.dto.BookingResponseDto;
 import com.myspringproject.carwash.payment_service.dto.InitiatePaymentRequest;
 import com.myspringproject.carwash.payment_service.dto.LockedSlotQuoteResponse;
 import com.myspringproject.carwash.payment_service.entity.Payment;
+import com.myspringproject.carwash.payment_service.exception.PaymentSlotUnavailableException;
 
 @Service
 public class BookingClientService {
@@ -30,14 +32,22 @@ public class BookingClientService {
                 request.getSlotTime(),
                 request.getDate());
 
-        LockedSlotQuoteResponse response = bookingWebClient.post()
-                .uri("/slots/locked-quote")
-                .header("X-Customer-Id", customerId.toString())
-                .header("X-Internal-Service-Token", bookingConfirmationToken)
-                .bodyValue(quoteRequest)
-                .retrieve()
-                .bodyToMono(LockedSlotQuoteResponse.class)
-                .block();
+        LockedSlotQuoteResponse response;
+        try {
+            response = bookingWebClient.post()
+                    .uri("/slots/locked-quote")
+                    .header("X-Customer-Id", customerId.toString())
+                    .header("X-Internal-Service-Token", bookingConfirmationToken)
+                    .bodyValue(quoteRequest)
+                    .retrieve()
+                    .bodyToMono(LockedSlotQuoteResponse.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            if (e.getStatusCode().is4xxClientError()) {
+                throw new PaymentSlotUnavailableException("Slot lock expired or not found", e);
+            }
+            throw e;
+        }
 
         if (response == null || response.amount() == null || response.currency() == null) {
             throw new IllegalStateException("Booking service did not return a locked slot quote");
