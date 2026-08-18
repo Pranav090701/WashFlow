@@ -1,6 +1,7 @@
 package com.myspringproject.carwash.booking_service.controller;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.myspringproject.carwash.booking_service.exception.UnauthorizedAccessException;
+import com.myspringproject.carwash.booking_service.dto.AdminBookingResponse;
 import com.myspringproject.carwash.booking_service.service.BookingService;
 
 @RestController
@@ -41,6 +43,13 @@ public class BookingController {
 
         boolean valid = bookingService.isValidBooking(bookingId, customerId);
         return ResponseEntity.ok(valid);
+    }
+
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @GetMapping("/me")
+    public ResponseEntity<List<AdminBookingResponse>> getMyBookings(@AuthenticationPrincipal Jwt jwt) {
+        UUID customerId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(bookingService.getBookingsForCustomer(customerId));
     }
 
     /**

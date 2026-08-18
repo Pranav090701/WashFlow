@@ -62,6 +62,7 @@ public class SecurityConfig {
 
                         .pathMatchers(HttpMethod.GET, "/slots/available").hasAnyRole("CUSTOMER", "WASHER", "ADMIN")
                         .pathMatchers(HttpMethod.POST, "/slots/lock").hasRole("CUSTOMER")
+                        .pathMatchers(HttpMethod.DELETE, "/slots/lock").hasRole("CUSTOMER")
                         .pathMatchers(HttpMethod.POST, "/slots/locked-quote").denyAll()
                         .pathMatchers(HttpMethod.POST, "/slots/confirm").denyAll()
                         .pathMatchers(HttpMethod.POST, "/slots/generate").hasRole("ADMIN")

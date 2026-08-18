@@ -112,6 +112,30 @@ public class SlotService {
         }
     }
 
+    public void releaseSlotLock(UUID washerId, LocalDate date, LocalTime startTime, UUID customerId) {
+        slotAvailabilityPolicy.validateLockedSlotCanProceed(date, startTime);
+
+        Slot slot = getSlot(washerId, date, startTime);
+        ensureSlotIsNotBooked(slot);
+
+        boolean released = slotCacheService.removeLockIfOwned(
+                washerId.toString(),
+                date.toString(),
+                startTime.toString(),
+                customerId);
+
+        if (!released) {
+            validateLockOwner(washerId, date, startTime, customerId);
+        }
+
+        if (slotAvailabilityPolicy.isBookable(date, startTime)) {
+            slotCacheService.addAvailableSlot(
+                    washerId.toString(),
+                    date.toString(),
+                    startTime.toString());
+        }
+    }
+
     /**
      * Validate that a slot is currently locked by this customer and return the
      * server-owned payable amount.

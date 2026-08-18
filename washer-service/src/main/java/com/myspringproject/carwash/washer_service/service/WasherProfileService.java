@@ -43,7 +43,9 @@ public class WasherProfileService {
         washerProfile.setAverageRating(0.0);
         washerProfile.setTotalRatings(0);
 
-        return profileRepository.save(washerProfile);
+        WasherProfile saved = profileRepository.save(washerProfile);
+        evictAreaCache(saved.getServiceArea(), saved.getPincode());
+        return saved;
     }
 
 
@@ -58,6 +60,9 @@ public class WasherProfileService {
         WasherProfile existing = profileRepository.findById(userId)
                 .orElseThrow(() -> new ProfileNotFoundException("WasherProfile not found for user ID: " + userId));
 
+        String previousServiceArea = existing.getServiceArea();
+        String previousPincode = existing.getPincode();
+
         existing.setFullName(updatedWasherProfile.getFullName());
         existing.setPhoneNumber(updatedWasherProfile.getPhoneNumber());
         existing.setProfilePictureUrl(updatedWasherProfile.getProfilePictureUrl());
@@ -66,7 +71,10 @@ public class WasherProfileService {
         existing.setPincode(updatedWasherProfile.getPincode());
         existing.setPricing(updatedWasherProfile.getPricing());
 
-        return profileRepository.save(existing);
+        WasherProfile saved = profileRepository.save(existing);
+        evictAreaCache(previousServiceArea, previousPincode);
+        evictAreaCache(saved.getServiceArea(), saved.getPincode());
+        return saved;
     }
 
     
@@ -76,9 +84,8 @@ public class WasherProfileService {
 
         existing.setAvailability(availability);
 
-        updateCachedWasherAvailability(existing.getUserId(), existing.getServiceArea(), existing.getPincode(), availability);
-
         profileRepository.save(existing);
+        evictAreaCache(existing.getServiceArea(), existing.getPincode());
 
         return "Availability Updated to " + availability + " for User " + userId;
     }
@@ -99,7 +106,7 @@ public class WasherProfileService {
         List<WasherProfile> profiles = redisTemplate.opsForValue().get(key);
         if(profiles == null){
             profiles = profileRepository.findByServiceAreaAndPincode(serviceArea, pincode);
-            redisTemplate.opsForValue().set(key, profiles);
+            redisTemplate.opsForValue().set(key, profiles, Duration.ofMinutes(30));
         }
         return profiles;
     }
@@ -130,6 +137,13 @@ public class WasherProfileService {
             redisTemplate.opsForValue().set(key, cached, Duration.ofMinutes(30));
     }
 }
+
+    private void evictAreaCache(String serviceArea, String pincode) {
+        if (serviceArea == null || pincode == null) {
+            return;
+        }
+        redisTemplate.delete("washer_profiles:area:" + serviceArea + ":pincode:" + pincode);
+    }
 
     public List<UUID> getAvailableWashersId() {
         return profileRepository.findByAvailability(true)

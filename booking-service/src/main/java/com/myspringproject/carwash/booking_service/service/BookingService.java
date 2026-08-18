@@ -90,6 +90,12 @@ public class BookingService {
                 .toList();
     }
 
+    public List<AdminBookingResponse> getBookingsForCustomer(UUID customerId) {
+        return bookingRepository.findByUserId(customerId).stream()
+                .map(this::toAdminResponse)
+                .toList();
+    }
+
     public List<AdminBookingResponse> getBookingsForWasherForAdmin(UUID washerId) {
         List<UUID> slotIds = slotRepository.findByWasherId(washerId).stream()
                 .map(Slot::getId)

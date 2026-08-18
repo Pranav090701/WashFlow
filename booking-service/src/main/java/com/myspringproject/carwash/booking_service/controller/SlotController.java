@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -59,6 +60,17 @@ public class SlotController {
             @Valid @RequestBody SlotRequest slotRequest) {
         slotService.lockSlot(slotRequest, customerId);
         return ResponseEntity.ok("Slot locked for 10 minutes.");
+    }
+
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @DeleteMapping("/lock")
+    public ResponseEntity<String> releaseSlotLock(
+            @RequestHeader("X-Customer-Id") UUID customerId,
+            @RequestParam UUID washerId,
+            @RequestParam LocalDate date,
+            @RequestParam LocalTime startTime) {
+        slotService.releaseSlotLock(washerId, date, startTime, customerId);
+        return ResponseEntity.ok("Slot lock released.");
     }
 
     /**

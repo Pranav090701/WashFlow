@@ -87,6 +87,17 @@ public class GatewayRoutesConfig {
                                         .setName("bookingService")
                                         .setFallbackUri("forward:/fallback/service-unavailable")))
                         .uri(serviceRoutes.bookingUrl()))
+                .route("slot-lock-release", route -> route
+                        .method(HttpMethod.DELETE)
+                        .and()
+                        .path("/slots/lock")
+                        .filters(filters -> filters.requestRateLimiter(config -> config
+                                .setRateLimiter(slotLockRateLimiter)
+                                .setKeyResolver(userIdKeyResolver))
+                                .circuitBreaker(config -> config
+                                        .setName("bookingService")
+                                        .setFallbackUri("forward:/fallback/service-unavailable")))
+                        .uri(serviceRoutes.bookingUrl()))
                 .route("payment-initiate", route -> route
                         .method(HttpMethod.POST)
                         .and()

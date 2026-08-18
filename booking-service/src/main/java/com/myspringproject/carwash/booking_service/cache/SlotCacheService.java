@@ -87,6 +87,16 @@ public UUID getLockOwner(String washerId, String date, String slotTime) {
         redisTemplate.delete(lockKey);
     }
 
+    public boolean removeLockIfOwned(String washerId, String date, String slotTime, UUID customerId) {
+        UUID lockOwner = getLockOwner(washerId, date, slotTime);
+        if (lockOwner == null || !lockOwner.equals(customerId)) {
+            return false;
+        }
+
+        removeLock(washerId, date, slotTime);
+        return true;
+    }
+
     /**
      * Get all available slots for a washer on a date
      */
