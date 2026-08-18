@@ -97,7 +97,7 @@ public class SlotController {
     @PostMapping("/generate")
     public ResponseEntity<String> generateSlotsForWasher(
             ) {
-        slotInitializerScheduler.createAndCacheSlotsForNextDay();
-        return ResponseEntity.ok("Slots generated for washers for date "+ LocalDate.now().plusDays(1));
+        slotInitializerScheduler.createAndCacheSlotsForBookingWindow();
+        return ResponseEntity.ok("Slots generated for booking window through " + LocalDate.now().plusDays(2));
     }
 }

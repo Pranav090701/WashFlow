@@ -4,14 +4,21 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
+import jakarta.validation.constraints.NotNull;
+
 /**
  * This DTO captures the slot booking request from the user.
  * It includes the washer's ID, date of the wash, and time range.
  */
 public class SlotRequest {
 
+    @NotNull(message = "Washer ID is required")
     private UUID washerId;
+
+    @NotNull(message = "Date is required (yyyy-MM-dd format)")
     private LocalDate date;
+
+    @NotNull(message = "Start time is required (HH:mm format)")
     private LocalTime startTime;
 
     public SlotRequest() {}

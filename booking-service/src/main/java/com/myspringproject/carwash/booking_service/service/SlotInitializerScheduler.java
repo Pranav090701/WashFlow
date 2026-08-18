@@ -2,6 +2,8 @@ package com.myspringproject.carwash.booking_service.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -20,36 +22,49 @@ public class SlotInitializerScheduler {
 
     private final SlotService slotService;
     private final WasherClientService washerClientService;
+    private final SlotAvailabilityPolicy slotAvailabilityPolicy;
 
     private static final Logger logger = LoggerFactory.getLogger(SlotInitializerScheduler.class);
 
     public SlotInitializerScheduler(SlotService slotService,
-            WasherClientService washerClientService) {
+            WasherClientService washerClientService,
+            SlotAvailabilityPolicy slotAvailabilityPolicy) {
         this.slotService = slotService;
         this.washerClientService = washerClientService;
+        this.slotAvailabilityPolicy = slotAvailabilityPolicy;
     }
 
     /**
-     * This scheduled method runs every day at 11:58 PM
-     * It initializes the next day's slots for each washer and caches them as
-     * available.
+     * This scheduled method runs every day at 11:58 PM.
+     * It keeps a rolling booking window cached for today, tomorrow, and the day
+     * after tomorrow.
      */
     @Scheduled(cron = "0 58 23 * * *")
-    public void createAndCacheSlotsForNextDay() {
-        LocalDate nextDay = LocalDate.now().plusDays(1);
+    public void createAndCacheSlotsForBookingWindow() {
+        slotService.removePastAvailableSlotKeys();
+
+        LocalDate today = LocalDate.now();
         List<UUID> availableWashers = washerClientService.getAvailableWasherIds();
 
         if (availableWashers.isEmpty()) {
-            logger.error("No available washers found for {}", nextDay);
+            logger.error("No available washers found while preparing booking window");
             return;
         }
 
-        for (UUID washerId : availableWashers) {
-            List<Slot> slots = createHourlySlots(washerId, nextDay);
-            slotService.saveSlotsAndCache(slots);
+        for (int dayOffset = 0; dayOffset <= 2; dayOffset++) {
+            LocalDate slotDate = today.plusDays(dayOffset);
+            for (UUID washerId : availableWashers) {
+                List<Slot> slots = createHourlySlots(washerId, slotDate);
+                slotService.saveSlotsAndCache(slots);
+            }
         }
 
-        logger.info("Initialized and cached slots for {} washers for {}", availableWashers.size(), nextDay);
+        logger.info("Initialized and cached rolling booking window for {} washers", availableWashers.size());
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void createAndCacheSlotsOnStartup() {
+        createAndCacheSlotsForBookingWindow();
     }
 
     /**
@@ -57,8 +72,8 @@ public class SlotInitializerScheduler {
      */
     private List<Slot> createHourlySlots(UUID washerId, LocalDate date) {
         List<Slot> slots = new ArrayList<>();
-        LocalTime start = LocalTime.of(6, 0);
-        LocalTime end = LocalTime.of(18, 0);
+        LocalTime start = slotAvailabilityPolicy.workStart();
+        LocalTime end = slotAvailabilityPolicy.workEnd();
 
         while (!start.isAfter(end.minusHours(1))) {
             Slot slot = Slot.builder()
