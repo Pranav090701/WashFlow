@@ -54,17 +54,6 @@ flowchart LR
     PAYMENT --> BOOKING
 ```
 
-## Demo
-
-Add screenshots under `docs/assets/screenshots/` before sharing the repo.
-
-| Customer Booking | Bookings/Profile |
-| --- | --- |
-| ![Customer booking](docs/assets/screenshots/customer-booking.png) | ![Bookings page](docs/assets/screenshots/bookings.png) |
-
-| Razorpay Checkout | Mailtrap Email |
-| --- | --- |
-| ![Razorpay checkout](docs/assets/screenshots/razorpay-checkout.png) | ![Mailtrap verification](docs/assets/screenshots/mailtrap-verification.png) |
 
 ## Tech Stack
 
