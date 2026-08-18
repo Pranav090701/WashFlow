@@ -98,11 +98,13 @@ public class RedisSessionValidationFilter implements WebFilter {
         return HttpMethod.OPTIONS.equals(method)
                 || path.equals("/actuator/health")
                 || path.equals("/actuator/info")
+                || path.startsWith("/fallback/")
                 || path.startsWith("/swagger-ui")
                 || path.startsWith("/v3/api-docs")
                 || path.equals("/auth/verify") && HttpMethod.GET.equals(method)
                 || path.equals("/auth/register") && HttpMethod.POST.equals(method)
                 || path.equals("/auth/login") && HttpMethod.POST.equals(method)
+                || path.equals("/auth/resend-verification") && HttpMethod.POST.equals(method)
                 || path.equals("/payments/webhook") && HttpMethod.POST.equals(method);
     }
 

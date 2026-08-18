@@ -30,11 +30,11 @@ import com.myspringproject.carwash.payment_service.entity.Payment.PaymentStatus;
 import com.myspringproject.carwash.payment_service.event.PaymentEventPublisher;
 import com.myspringproject.carwash.payment_service.exception.BookingConfirmationException;
 import com.myspringproject.carwash.payment_service.exception.PaymentAccessDeniedException;
+import com.myspringproject.carwash.payment_service.exception.PaymentDependencyUnavailableException;
 import com.myspringproject.carwash.payment_service.exception.PaymentNotFoundException;
 import com.myspringproject.carwash.payment_service.exception.PaymentVerificationException;
 import com.myspringproject.carwash.payment_service.repository.PaymentRepository;
 import com.razorpay.Order;
-import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 
 @Service
@@ -43,8 +43,8 @@ public class PaymentService {
     private static final Logger logger = LoggerFactory.getLogger(PaymentService.class);
 
     private final PaymentRepository paymentRepository;
-    private final RazorpayClient razorpayClient;
     private final BookingClientService bookingClientService;
+    private final RazorpayOrderService razorpayOrderService;
     private final PaymentEventPublisher paymentEventPublisher;
     private final String razorpayKeyId;
     private final String razorpayKeySecret;
@@ -57,15 +57,15 @@ public class PaymentService {
 
     public PaymentService(
             PaymentRepository paymentRepository,
-            RazorpayClient razorpayClient,
             BookingClientService bookingClientService,
+            RazorpayOrderService razorpayOrderService,
             PaymentEventPublisher paymentEventPublisher,
             @Value("${razorpay.key-id}") String razorpayKeyId,
             @Value("${razorpay.key-secret}") String razorpayKeySecret,
             @Value("${razorpay.webhook-secret}") String razorpayWebhookSecret) {
         this.paymentRepository = paymentRepository;
-        this.razorpayClient = razorpayClient;
         this.bookingClientService = bookingClientService;
+        this.razorpayOrderService = razorpayOrderService;
         this.paymentEventPublisher = paymentEventPublisher;
         this.razorpayKeyId = razorpayKeyId;
         this.razorpayKeySecret = razorpayKeySecret;
@@ -153,9 +153,9 @@ public class PaymentService {
 
         Order order;
         try {
-            order = razorpayClient.orders.create(orderRequest);
+            order = razorpayOrderService.createOrder(orderRequest);
         } catch (RazorpayException e) {
-            throw new PaymentVerificationException("Unable to create Razorpay order: " + e.getMessage());
+            throw new PaymentDependencyUnavailableException("Unable to create Razorpay order", e);
         }
 
         Payment payment = new Payment();

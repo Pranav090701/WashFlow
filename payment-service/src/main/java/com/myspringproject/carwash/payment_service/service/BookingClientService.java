@@ -12,7 +12,10 @@ import com.myspringproject.carwash.payment_service.dto.BookingResponseDto;
 import com.myspringproject.carwash.payment_service.dto.InitiatePaymentRequest;
 import com.myspringproject.carwash.payment_service.dto.LockedSlotQuoteResponse;
 import com.myspringproject.carwash.payment_service.entity.Payment;
+import com.myspringproject.carwash.payment_service.exception.PaymentDependencyUnavailableException;
 import com.myspringproject.carwash.payment_service.exception.PaymentSlotUnavailableException;
+
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 
 @Service
 public class BookingClientService {
@@ -26,6 +29,7 @@ public class BookingClientService {
         this.bookingConfirmationToken = bookingConfirmationToken;
     }
 
+    @CircuitBreaker(name = "paymentBookingQuote", fallbackMethod = "getLockedSlotQuoteFallback")
     public LockedSlotQuoteResponse getLockedSlotQuote(UUID customerId, InitiatePaymentRequest request) {
         BookingRequestDto quoteRequest = new BookingRequestDto(
                 request.getWasherId(),
@@ -55,6 +59,7 @@ public class BookingClientService {
         return response;
     }
 
+    @CircuitBreaker(name = "paymentBookingConfirm", fallbackMethod = "confirmBookingFallback")
     public UUID confirmBooking(Payment payment) {
         BookingRequestDto request = new BookingRequestDto(
                 payment.getWasherId(),
@@ -74,5 +79,19 @@ public class BookingClientService {
             throw new IllegalStateException("Booking service did not return a booking id");
         }
         return response.getId();
+    }
+
+    public LockedSlotQuoteResponse getLockedSlotQuoteFallback(
+            UUID customerId,
+            InitiatePaymentRequest request,
+            Throwable cause) {
+        if (cause instanceof PaymentSlotUnavailableException slotUnavailableException) {
+            throw slotUnavailableException;
+        }
+        throw new PaymentDependencyUnavailableException("Booking service is temporarily unavailable for slot quote", cause);
+    }
+
+    public UUID confirmBookingFallback(Payment payment, Throwable cause) {
+        throw new PaymentDependencyUnavailableException("Booking service is temporarily unavailable for booking confirmation", cause);
     }
 }

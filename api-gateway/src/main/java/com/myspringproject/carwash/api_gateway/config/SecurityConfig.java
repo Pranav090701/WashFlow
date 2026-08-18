@@ -45,9 +45,10 @@ public class SecurityConfig {
                 .authorizeExchange(auth -> auth
                         .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers("/actuator/health", "/actuator/info").permitAll()
+                        .pathMatchers("/fallback/**").permitAll()
                         .pathMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        .pathMatchers(HttpMethod.POST, "/auth/register", "/auth/login").permitAll()
+                        .pathMatchers(HttpMethod.POST, "/auth/register", "/auth/login", "/auth/resend-verification").permitAll()
                         .pathMatchers(HttpMethod.GET, "/auth/verify").permitAll()
                         .pathMatchers("/auth/**").authenticated()
 
