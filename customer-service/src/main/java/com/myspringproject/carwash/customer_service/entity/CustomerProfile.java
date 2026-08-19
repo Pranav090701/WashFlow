@@ -18,6 +18,9 @@ public class CustomerProfile {
     @Column(name = "phone_number")
     private String phoneNumber;
 
+    @Column(name = "address")
+    private String address;
+
     @Column(name = "profile_picture_url")
     private String profilePictureUrl;
 
@@ -26,10 +29,11 @@ public class CustomerProfile {
 
     
 
-    public CustomerProfile(UUID userId, String fullName, String phoneNumber, String profilePictureUrl) {
+    public CustomerProfile(UUID userId, String fullName, String phoneNumber, String address, String profilePictureUrl) {
         this.userId = userId;
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
+        this.address = address;
         this.profilePictureUrl = profilePictureUrl;
     }
 
@@ -55,8 +59,16 @@ public class CustomerProfile {
         return phoneNumber;
     }
 
+    public String getAddress() {
+        return address;
+    }
+
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public String getProfilePictureUrl() {
@@ -71,7 +83,7 @@ public class CustomerProfile {
     @Override
     public String toString() {
         return "CustomerProfile [userId=" + userId + ", fullName=" + fullName + ", phoneNumber=" + phoneNumber
-                + ", profilePictureUrl=" + profilePictureUrl + "]";
+                + ", address=" + address + ", profilePictureUrl=" + profilePictureUrl + "]";
     }
 
     

@@ -52,6 +52,13 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingsForCustomer(customerId));
     }
 
+    @PreAuthorize("hasRole('WASHER')")
+    @GetMapping("/washer/me")
+    public ResponseEntity<List<AdminBookingResponse>> getMyWasherBookings(@AuthenticationPrincipal Jwt jwt) {
+        UUID washerId = UUID.fromString(jwt.getSubject());
+        return ResponseEntity.ok(bookingService.getBookingsForWasher(washerId));
+    }
+
     /**
      * Mark a booking as completed.
      *

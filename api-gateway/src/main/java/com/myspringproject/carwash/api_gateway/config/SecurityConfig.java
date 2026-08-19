@@ -57,7 +57,9 @@ public class SecurityConfig {
 
                         .pathMatchers("/admin/bookings/**", "/admin/payments/**").hasRole("ADMIN")
 
+                        .pathMatchers(HttpMethod.GET, "/customerProfile/**").hasAnyRole("CUSTOMER", "ADMIN", "WASHER")
                         .pathMatchers("/customerProfile/**").hasRole("CUSTOMER")
+                        .pathMatchers(HttpMethod.GET, "/cars/customer/**").hasAnyRole("ADMIN", "WASHER")
                         .pathMatchers("/cars/**").hasRole("CUSTOMER")
 
                         .pathMatchers(HttpMethod.GET, "/slots/available").hasAnyRole("CUSTOMER", "WASHER", "ADMIN")

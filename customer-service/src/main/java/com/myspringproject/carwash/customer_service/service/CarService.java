@@ -15,7 +15,6 @@ import com.myspringproject.carwash.customer_service.exception.CarNotFoundExcepti
 import com.myspringproject.carwash.customer_service.exception.CarOwnershipMismatchException;
 import com.myspringproject.carwash.customer_service.repository.CarRepository;
 
-@PreAuthorize("hasRole('CUSTOMER')")
 @Service
 public class CarService {
 
@@ -38,6 +37,7 @@ public class CarService {
      * @param userId   UUID of the user adding the car
      * @return The saved Car entity
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Car addCar(CarDTO inputCar, UUID userId) {
         logger.info("Entered addCar for {}", userId);
         Car car = new Car();
@@ -64,6 +64,7 @@ public class CarService {
      * @return List of Car entities for the user
      */
     @SuppressWarnings("unchecked")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'WASHER')")
     public List<Car> getCarsByUserId(UUID userId) {
         logger.info("Entered getCarsByUserId for {}", userId);
         // Optional: use Redis cache
@@ -89,6 +90,7 @@ public class CarService {
      * @param carId  UUID of the car to delete
      * @param userId UUID of the user requesting deletion
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     public void deleteCarById(UUID carId, UUID userId) {
         logger.info("Entered deleteCarById for carId: {} and userId: {}", carId, userId);
         Car existingCar = carRepository.findById(carId)
@@ -114,6 +116,7 @@ public class CarService {
      * @param carId  UUID of the car to update
      * @return The updated Car entity
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     public Car updateCar(CarDTO car, UUID userId, UUID carId) {
         logger.info("Entered updateCar for carId: {} and userId: {}", carId, userId);
         Car existingCar = carRepository.findById(carId)

@@ -56,15 +56,23 @@ flowchart LR
 
 ## Demo
 
-Add screenshots under `docs/assets/screenshots/` before sharing the repo.
+### Entry And Booking Flow
 
-| Customer Booking | Bookings/Profile |
+| Login | Select Washer, Slot, And Checkout |
 | --- | --- |
-| ![Customer booking](docs/assets/screenshots/customer-booking.png) | ![Bookings page](docs/assets/screenshots/bookings.png) |
+| ![WashFlow login page](docs/assets/screenshots/login_page.png) | ![Customer selects washer, slot, and checkout summary](docs/assets/screenshots/selected_slot.png) |
 
-| Razorpay Checkout | Mailtrap Email |
+### Payment And Customer Schedule
+
+| Razorpay Test Checkout | Customer Bookings And Rating |
 | --- | --- |
-| ![Razorpay checkout](docs/assets/screenshots/razorpay-checkout.png) | ![Mailtrap verification](docs/assets/screenshots/mailtrap-verification.png) |
+| ![Razorpay test checkout](docs/assets/screenshots/razorpay-checkout.png) | ![Customer bookings with completed and confirmed slots](docs/assets/screenshots/bookings.png) |
+
+### Role-Based Workspaces
+
+| Washer Workspace | Admin Operations |
+| --- | --- |
+| ![Washer workspace with assigned bookings](docs/assets/screenshots/washer_workspace.png) | ![Admin booking operations](docs/assets/screenshots/admin_dashboard.png) |
 
 ## Tech Stack
 

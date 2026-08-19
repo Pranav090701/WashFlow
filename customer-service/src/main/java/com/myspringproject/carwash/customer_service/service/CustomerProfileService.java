@@ -13,7 +13,6 @@ import com.myspringproject.carwash.customer_service.repository.CustomerProfileRe
 
 import java.util.UUID;
 
-@PreAuthorize("hasRole('CUSTOMER')")
 @Service
 public class CustomerProfileService {
 
@@ -33,6 +32,7 @@ public class CustomerProfileService {
      * @param profileData CustomerProfileDTO object containing profile details
      * @return The created CustomerProfile
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     public CustomerProfile createCustomerProfile(UUID userId, CustomerProfileDTO profileData) {
         logger.info("Creating customer profile for userId: {}", userId);
         if (profileRepository.existsById(userId)) {
@@ -40,7 +40,7 @@ public class CustomerProfileService {
         }
 
         CustomerProfile profile = new CustomerProfile(userId,profileData.getFullName(),
-                profileData.getPhoneNumber(), profileData.getProfilePictureUrl());
+                profileData.getPhoneNumber(), profileData.getAddress(), profileData.getProfilePictureUrl());
         
         return profileRepository.save(profile);
     }
@@ -52,6 +52,7 @@ public class CustomerProfileService {
      * @param userId UUID of the user whose profile is to be retrieved
      * @return The CustomerProfile for the given user ID
      */
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN', 'WASHER')")
     public CustomerProfile getCustomerProfile(UUID userId) {
         logger.info("Retrieving customer profile for userId: {}", userId);
         return profileRepository.findById(userId)
@@ -66,6 +67,7 @@ public class CustomerProfileService {
      * @param updatedCustomerProfile CustomerProfile object containing updated details
      * @return The updated CustomerProfile
      */
+    @PreAuthorize("hasRole('CUSTOMER')")
     public CustomerProfile updateCustomerProfile(UUID userId, CustomerProfileDTO updatedCustomerProfile) {
         logger.info("Updating customer profile for userId: {}", userId);
         CustomerProfile existing = profileRepository.findById(userId)
@@ -73,6 +75,7 @@ public class CustomerProfileService {
 
         existing.setFullName(updatedCustomerProfile.getFullName());
         existing.setPhoneNumber(updatedCustomerProfile.getPhoneNumber());
+        existing.setAddress(updatedCustomerProfile.getAddress());
         existing.setProfilePictureUrl(updatedCustomerProfile.getProfilePictureUrl());
 
         return profileRepository.save(existing);

@@ -7,6 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -34,7 +35,9 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
+                .requestMatchers(HttpMethod.GET, "/customerProfile/**").hasAnyRole("CUSTOMER", "ADMIN", "WASHER")
                 .requestMatchers("/customerProfile/**").hasRole("CUSTOMER")
+                .requestMatchers(HttpMethod.GET, "/cars/customer/**").hasAnyRole("ADMIN", "WASHER")
                 .requestMatchers("/cars/**").hasAnyRole("CUSTOMER","ADMIN")
                 .anyRequest().authenticated()
             )

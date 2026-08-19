@@ -6,11 +6,14 @@ public class CustomerProfileDTO {
 
     private String phoneNumber;
 
+    private String address;
+
     private String profilePictureUrl;
 
-    public CustomerProfileDTO(String fullName, String phoneNumber, String profilePictureUrl) {
+    public CustomerProfileDTO(String fullName, String phoneNumber, String address, String profilePictureUrl) {
         this.fullName = fullName;
         this.phoneNumber = phoneNumber;
+        this.address = address;
         this.profilePictureUrl = profilePictureUrl;
     }
 
@@ -25,6 +28,10 @@ public class CustomerProfileDTO {
         return phoneNumber;
     }
 
+    public String getAddress() {
+        return address;
+    }
+
     public String getProfilePictureUrl() {
         return profilePictureUrl;
     }
@@ -35,6 +42,10 @@ public class CustomerProfileDTO {
 
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public void setProfilePictureUrl(String profilePictureUrl) {

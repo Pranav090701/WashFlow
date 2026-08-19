@@ -56,6 +56,12 @@ public class CarController {
         return ResponseEntity.ok(cars);
     }
 
+    @GetMapping("/customer/{userId}")
+    public ResponseEntity<List<Car>> getCarsForCustomer(@PathVariable UUID userId) {
+        List<Car> cars = carService.getCarsByUserId(userId);
+        return ResponseEntity.ok(cars);
+    }
+
     /**
      * Update an existing car for the user.
      *
